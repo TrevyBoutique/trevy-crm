@@ -1,10 +1,885 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Trevy Soluciones CRM</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background-color: #f4f4f4;
+      display: flex;
+    }
+    .sidebar {
+      width: 200px;
+      background-color: #2c3e50;
+      color: white;
+      height: 100vh;
+      position: fixed;
+      padding-top: 20px;
+    }
+    .sidebar h2 {
+      text-align: center;
+      font-size: 1.2em;
+      margin-bottom: 20px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      padding: 15px;
+      text-decoration: none;
+      font-size: 1em;
+    }
+    .sidebar a:hover {
+      background-color: #34495e;
+    }
+    .content {
+      margin-left: 200px;
+      padding: 20px;
+      width: calc(100% - 200px);
+    }
+    .page {
+      display: none;
+    }
+    .page.active {
+      display: block;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .form-group, .search-group {
+      margin-bottom: 15px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 4px;
+      display: inline-block;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+    .message {
+      text-align: center;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background-color: #f4f4f4;
+    }
+    canvas {
+      max-width: 500px;
+      margin: 20px auto;
+      display: block;
+    }
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 150px;
+      }
+      .content {
+        margin-left: 150px;
+        width: calc(100% - 150px);
+      }
+      h1 {
+        font-size: 1.5em;
+      }
+      .form-group, .search-group {
+        max-width: 100%;
+      }
+    }
+    @media (max-width: 480px) {
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+      }
+      .content {
+        margin-left: 0;
+        width: 100%;
+      }
+      table, canvas {
+        font-size: 0.8em;
+      }
+      button {
+        width: 100%;
+        margin: 5px 0;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>Trevy Soluciones CRM - Placeholder</h1>
-  <p>This is a placeholder. The full CRM will be uploaded soon.</p>
+  <div class="sidebar">
+    <h2>Trevy Soluciones</h2>
+    <a href="#" onclick="showPage('home')">Home</a>
+    <a href="#" onclick="showPage('transactions')">Transaction List</a>
+    <a href="#" onclick="showPage('funds')">Funds Tracking</a>
+    <a href="#" onclick="showPage('payments')">Payment Records</a>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <div class="content">
+    <!-- Welcome Page -->
+    <div id="welcome" class="page active">
+      <h1>Welcome to Trevy Soluciones CRM</h1>
+      <p>Authenticating...</p>
+    </div>
+
+    <!-- Home Page -->
+    <div id="home" class="page">
+      <h1>Trevy Soluciones Loan Services</h1>
+
+      <div id="browserSupportMessage" class="message" style="display: none;"></div>
+
+      <h2>Import Data</h2>
+      <input type="file" id="importFile" accept="application/json" style="display: inline-block;">
+      <button onclick="importData()">Import Data</button>
+      <div id="importExportMessage" class="message"></div>
+
+      <h2>Add Transaction</h2>
+      <div class="form-group">
+        <label for="cxName">Customer Name</label>
+        <input type="text" id="cxName" placeholder="Enter customer name">
+      </div>
+      <div class="form-group">
+        <label for="cxId">Passport/Cedula</label>
+        <input type="text" id="cxId" placeholder="Enter passport/cedula">
+      </div>
+      <div class="form-group">
+        <label for="cxPhone">Phone Number</label>
+        <input type="text" id="cxPhone" placeholder="Enter phone number">
+      </div>
+      <div class="form-group">
+        <label for="activitySector">Activity Sector</label>
+        <input type="text" id="activitySector" placeholder="Enter activity sector">
+      </div>
+      <div class="form-group">
+        <label for="paymentType">Payment Type</label>
+        <select id="paymentType" onchange="togglePaymentFields()">
+          <option value="weekly">Weekly Payment</option>
+          <option value="single">Single Payment</option>
+        </select>
+      </div>
+      <div class="form-group" id="weeklyPaymentFields" style="display: none;">
+        <label for="numberOfWeeks">Number of Weeks for Repayment</label>
+        <input type="number" id="numberOfWeeks" placeholder="Enter number of weeks" min="1">
+      </div>
+      <div class="form-group" id="singlePaymentFields" style="display: none;">
+        <label for="endDate">End Date for Repayment</label>
+        <input type="date" id="endDate">
+      </div>
+      <div class="form-group">
+        <label for="amount">Loan Amount (DOP)</label>
+        <input type="number" id="amount" placeholder="Enter amount">
+      </div>
+      <div class="form-group">
+        <label for="interestRate">Interest Rate (%)</label>
+        <input type="number" id="interestRate" placeholder="Enter interest rate" step="0.1">
+      </div>
+      <div class="form-group">
+        <label for="transactionDate">Date</label>
+        <input type="date" id="transactionDate">
+      </div>
+      <div class="form-group">
+        <label for="fundSource">Fund Source</label>
+        <select id="fundSource">
+          <option value="Fequens">Fequens</option>
+          <option value="Trevy Soluciones">Trevy Soluciones</option>
+        </select>
+      </div>
+      <button onclick="addTransaction()">Add Transaction</button>
+      <div id="transactionMessage" class="message"></div>
+
+      <h2>Record Payment</h2>
+      <div class="form-group">
+        <label for="paymentName">Customer Name</label>
+        <input type="text" id="paymentName" placeholder="Enter customer name">
+      </div>
+      <div class="form-group">
+        <label for="paymentCode">Customer Code</label>
+        <input type="text" id="paymentCode" placeholder="Enter customer code">
+      </div>
+      <div class="form-group">
+        <label for="paymentAmount">Payment Amount (DOP)</label>
+        <input type="number" id="paymentAmount" placeholder="Enter payment amount">
+      </div>
+      <div class="form-group">
+        <label for="paymentDate">Date of Payment</label>
+        <input type="date" id="paymentDate">
+      </div>
+      <button onclick="recordPayment()">Record Payment</button>
+      <div id="paymentMessage" class="message"></div>
+
+      <h2>Search Customer</h2>
+      <div class="search-group">
+        <label for="searchCode">Customer Code</label>
+        <input type="text" id="searchCode" placeholder="Enter customer code">
+        <button onclick="searchCustomer()">Search</button>
+        <div id="searchResult"></div>
+      </div>
+
+      <h2>Transactions This Month</h2>
+      <canvas id="monthlyChart"></canvas>
+    </div>
+
+    <!-- Transaction List Page -->
+    <div id="transactions" class="page">
+      <h1>Transaction List</h1>
+      <table id="transactionTable">
+        <thead>
+          <tr>
+            <th>Customer Code</th>
+            <th>Name</th>
+            <th>Amount (DOP)</th>
+            <th>Interest Rate (%)</th>
+            <th>Total Owed (DOP)</th>
+            <th>Remaining (DOP)</th>
+            <th>Payment Type</th>
+            <th>Weeks</th>
+            <th>Weekly Amount (DOP)</th>
+            <th>End Date</th>
+            <th>Next Due Date</th>
+            <th>Date</th>
+            <th>Fund Source</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="transactionTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Funds Tracking Page -->
+    <div id="funds" class="page">
+      <h1>Funds Tracking</h1>
+      <h2>Summary</h2>
+      <p><strong>Total Borrowed from Fequens:</strong> <span id="fequensBorrowed">0</span> DOP</p>
+      <p><strong>Fequens Interest on Remaining (7%):</strong> <span id="fequensInterest">0</span> DOP</p>
+      <p><strong>Total Owed to Fequens:</strong> <span id="fequensTotal">0</span> DOP</p>
+      <p><strong>Your Funds Used:</strong> <span id="trevyFunds">0</span> DOP</p>
+      <p><strong>Total Interest Earned on Remaining:</strong> <span id="totalInterestEarned">0</span> DOP</p>
+      <p><strong>Your Profit from Fequens Capital on Remaining:</strong> <span id="fequensProfit">0</span> DOP</p>
+      <p><strong>Your Total Profit on Remaining:</strong> <span id="totalProfit">0</span> DOP</p>
+      <h2>Fund Distribution</h2>
+      <canvas id="fundsChart"></canvas>
+    </div>
+
+    <!-- Payment Records Page -->
+    <div id="payments" class="page">
+      <h1>Payment Records</h1>
+      <table id="paymentTable">
+        <thead>
+          <tr>
+            <th>Customer Code</th>
+            <th>Customer Name</th>
+            <th>Payment Amount (DOP)</th>
+            <th>Payment Date</th>
+          </tr>
+        </thead>
+        <tbody id="paymentTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxQZ1ePP9qKIY1indIZiTL69Gm_KBYbfE",
+      authDomain: "trevy-crm.firebaseapp.com",
+      projectId: "trevy-crm",
+      storageBucket: "trevy-crm.firebasestorage.app",
+      messagingSenderId: "859964009852",
+      appId: "1:859964009852:web:da2733fca44c4add0dc8f9"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    // GitHub API settings
+    const GITHUB_TOKEN = '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';
+    const REPO_OWNER = 'trevysoluciones';
+    const REPO_NAME = 'trevy-crm';
+    const FILE_PATH = 'trevy_crm_data.json';
+
+    let transactions = [];
+    let payments = [];
+    let customerCounter = 1;
+
+    // Check user authentication state
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        // User is logged in, start the CRM
+        startCRM();
+      } else {
+        // User is not logged in, prompt for GitHub login
+        document.getElementById('welcome').style.display = 'block';
+        const provider = new firebase.auth.GithubAuthProvider();
+        auth.signInWithPopup(provider).catch(error => {
+          console.error('Login error:', error);
+          alert('Failed to log in. Please try again.');
+        });
+      }
+    });
+
+    // Logout functionality
+    function logout() {
+      auth.signOut().then(() => {
+        alert('Logged out successfully.');
+      }).catch(error => {
+        console.error('Logout error:', error);
+      });
+    }
+
+    // Load data from GitHub
+    async function loadInitialData() {
+      try {
+        const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
+          headers: {
+            Authorization: `token ${GITHUB_TOKEN}`,
+            Accept: 'application/vnd.github.v3+json'
+          }
+        });
+
+        if (response.status === 404) {
+          // File doesn't exist, initialize with empty data
+          transactions = [];
+          payments = [];
+          customerCounter = 1;
+          return;
+        }
+
+        const data = await response.json();
+        const content = atob(data.content); // Decode base64 content
+        const parsedData = JSON.parse(content);
+        customerCounter = parsedData.customerCounter || 1;
+        transactions = parsedData.transactions || [];
+        payments = parsedData.payments || [];
+        console.log('Data loaded from GitHub');
+      } catch (error) {
+        console.error('Error loading data from GitHub:', error);
+        // Fallback to localStorage if GitHub API fails
+        const storedCounter = localStorage.getItem('customerCounter');
+        if (storedCounter) customerCounter = parseInt(storedCounter);
+        const storedTransactions = localStorage.getItem('transactions');
+        if (storedTransactions) transactions = JSON.parse(storedTransactions);
+        const storedPayments = localStorage.getItem('payments');
+        if (storedPayments) payments = JSON.parse(storedPayments);
+      }
+    }
+
+    // Save data to GitHub
+    async function saveDataToFile() {
+      const data = { customerCounter, transactions, payments };
+      const content = btoa(JSON.stringify(data, null, 2)); // Encode to base64
+
+      try {
+        // First, get the current file's SHA (needed to update the file)
+        let sha = null;
+        const getResponse = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
+          headers: {
+            Authorization: `token ${GITHUB_TOKEN}`,
+            Accept: 'application/vnd.github.v3+json'
+          }
+        });
+
+        if (getResponse.ok) {
+          const fileData = await getResponse.json();
+          sha = fileData.sha;
+        }
+
+        // Save or update the file
+        const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
+          method: 'PUT',
+          headers: {
+            Authorization: `token ${GITHUB_TOKEN}`,
+            Accept: 'application/vnd.github.v3+json'
+          },
+          body: JSON.stringify({
+            message: 'Update trevy_crm_data.json',
+            content: content,
+            sha: sha // Include SHA if updating an existing file
+          })
+        });
+
+        if (response.ok) {
+          console.log('Data saved to GitHub');
+        } else {
+          console.error('Error saving data to GitHub:', await response.json());
+        }
+
+        // Also update localStorage as a backup
+        localStorage.setItem('customerCounter', customerCounter);
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+        localStorage.setItem('payments', JSON.stringify(payments));
+      } catch (error) {
+        console.error('Error saving data to GitHub:', error);
+        // Fallback to localStorage
+        localStorage.setItem('customerCounter', customerCounter);
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+        localStorage.setItem('payments', JSON.stringify(payments));
+      }
+    }
+
+    // Start the CRM
+    async function startCRM() {
+      await loadInitialData();
+      showPage('home');
+    }
+
+    // Import data from a JSON file
+    function importData() {
+      const fileInput = document.getElementById('importFile');
+      const messageDiv = document.getElementById('importExportMessage');
+
+      if (!fileInput.files[0]) {
+        messageDiv.className = 'message error';
+        messageDiv.innerText = 'Please select a file to import';
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          customerCounter = data.customerCounter || 1;
+          transactions = data.transactions || [];
+          payments = data.payments || [];
+
+          // Save to GitHub and localStorage
+          await saveDataToFile();
+
+          // Reload the app
+          await loadInitialData();
+          showPage('home');
+
+          messageDiv.className = 'message success';
+          messageDiv.innerText = 'Data imported successfully';
+        } catch (error) {
+          console.error('Error importing data:', error);
+          messageDiv.className = 'message error';
+          messageDiv.innerText = 'Error importing data: Invalid file format';
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function togglePaymentFields() {
+      const paymentType = document.getElementById('paymentType').value;
+      document.getElementById('weeklyPaymentFields').style.display = paymentType === 'weekly' ? 'block' : 'none';
+      document.getElementById('singlePaymentFields').style.display = paymentType === 'single' ? 'block' : 'none';
+    }
+
+    function clearTransactionForm() {
+      document.getElementById('cxName').value = '';
+      document.getElementById('cxId').value = '';
+      document.getElementById('cxPhone').value = '';
+      document.getElementById('activitySector').value = '';
+      document.getElementById('amount').value = '';
+      document.getElementById('interestRate').value = '';
+      document.getElementById('numberOfWeeks').value = '';
+      document.getElementById('endDate').value = '';
+      document.getElementById('transactionDate').value = '';
+      document.getElementById('paymentType').value = 'weekly';
+      document.getElementById('fundSource').value = 'Fequens';
+      togglePaymentFields();
+    }
+
+    function showPage(pageId) {
+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+      if (pageId === 'transactions') loadTransactionList();
+      if (pageId === 'funds') loadFundsPage();
+      if (pageId === 'home') loadMonthlyChart();
+      if (pageId === 'payments') loadPaymentRecords();
+    }
+
+    async function addTransaction() {
+      const cxName = document.getElementById('cxName').value.trim();
+      const cxId = document.getElementById('cxId').value.trim();
+      const cxPhone = document.getElementById('cxPhone').value.trim();
+      const activitySector = document.getElementById('activitySector').value.trim();
+      const paymentType = document.getElementById('paymentType').value;
+      const numberOfWeeks = parseInt(document.getElementById('numberOfWeeks').value) || 0;
+      const endDate = document.getElementById('endDate').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+      const interestRate = parseFloat(document.getElementById('interestRate').value);
+      const transactionDate = document.getElementById('transactionDate').value;
+      const fundSource = document.getElementById('fundSource').value;
+      const messageDiv = document.getElementById('transactionMessage');
+
+      if (!cxName || !cxId || !cxPhone || !activitySector || !paymentType || !amount || !interestRate || !transactionDate) {
+        messageDiv.className = 'message error';
+        messageDiv.innerText = 'Please fill in all fields';
+        return;
+      }
+
+      if (interestRate <= 7) {
+        messageDiv.className = 'message error';
+        messageDiv.innerText = 'Interest rate must be greater than 7%';
+        return;
+      }
+
+      if (paymentType === 'weekly' && (!numberOfWeeks || numberOfWeeks <= 0)) {
+        messageDiv.className = 'message error';
+        messageDiv.innerText = 'Please specify a valid number of weeks for weekly payments';
+        return;
+      }
+
+      if (paymentType === 'single' && !endDate) {
+        messageDiv.className = 'message error';
+        messageDiv.innerText = 'Please specify an end date for single payment';
+        return;
+      }
+
+      const customerCode = `TS-${String(customerCounter).padStart(3, '0')}`;
+      customerCounter++;
+      const totalOwed = amount * (1 + interestRate / 100);
+      const weeklyPaymentAmount = paymentType === 'weekly' ? totalOwed / numberOfWeeks : 0;
+
+      const transaction = {
+        id: Date.now().toString(),
+        customerCode,
+        cxName,
+        cxId,
+        cxPhone,
+        activitySector,
+        paymentType,
+        numberOfWeeks: paymentType === 'weekly' ? numberOfWeeks : null,
+        weeklyPaymentAmount: paymentType === 'weekly' ? weeklyPaymentAmount : null,
+        endDate: paymentType === 'single' ? endDate : null,
+        amount,
+        interestRate,
+        totalOwed,
+        remaining: totalOwed,
+        transactionDate,
+        fundSource
+      };
+
+      transactions.push(transaction);
+      await saveDataToFile();
+
+      messageDiv.className = 'message success';
+      messageDiv.innerText = `Transaction added for ${cxName} (Code: ${customerCode})`;
+      loadMonthlyChart();
+      clearTransactionForm();
+    }
+
+    async function recordPayment() {
+      const paymentName = document.getElementById('paymentName').value.trim();
+      const paymentCode = document.getElementById('paymentCode').value.trim();
+      const paymentAmount = parseFloat(document.getElementById('paymentAmount').value);
+      const paymentDate = document.getElementById('paymentDate').value;
+      const messageDiv = document.getElementById('paymentMessage');
+
+      if (!paymentName || !paymentCode || !paymentAmount || !paymentDate) {
+        messageDiv.className = 'message error';
+        messageDiv.innerText = 'Please fill in all fields';
+        return;
+      }
+
+      const transaction = transactions.find(tx => tx.customerCode === paymentCode && tx.cxName === paymentName);
+      if (!transaction) {
+        messageDiv.className = 'message error';
+        messageDiv.innerText = 'Customer not found';
+        return;
+      }
+
+      if (paymentAmount > transaction.remaining) {
+        messageDiv.className = 'message error';
+        messageDiv.innerText = 'Payment amount exceeds remaining balance';
+        return;
+      }
+
+      transaction.remaining -= paymentAmount;
+      const payment = { id: Date.now().toString(), customerCode: paymentCode, paymentAmount, paymentDate };
+      payments.push(payment);
+      await saveDataToFile();
+
+      messageDiv.className = 'message success';
+      messageDiv.innerText = `Payment of ${paymentAmount} DOP recorded for ${paymentName}`;
+      if (document.getElementById('payments').classList.contains('active')) loadPaymentRecords();
+    }
+
+    function searchCustomer() {
+      const searchCode = document.getElementById('searchCode').value.trim();
+      const resultDiv = document.getElementById('searchResult');
+      const transaction = transactions.find(tx => tx.customerCode === searchCode);
+
+      if (!transaction) {
+        resultDiv.innerHTML = '<p class="error">Customer not found</p>';
+        return;
+      }
+
+      let paymentSchedule = '';
+      if (transaction.paymentType === 'weekly' && transaction.numberOfWeeks) {
+        paymentSchedule = '<h3>Weekly Payment Schedule</h3><table><thead><tr><th>Week</th><th>Due Date</th><th>Amount (DOP)</th></tr></thead><tbody>';
+        const startDate = new Date(transaction.transactionDate);
+        for (let week = 1; week <= transaction.numberOfWeeks; week++) {
+          const dueDate = new Date(startDate);
+          dueDate.setDate(dueDate.getDate() + (week * 7));
+          paymentSchedule += `
+            <tr>
+              <td>${week}</td>
+              <td>${dueDate.toISOString().split('T')[0]}</td>
+              <td>${transaction.weeklyPaymentAmount.toFixed(2)}</td>
+            </tr>
+          `;
+        }
+        paymentSchedule += '</tbody></table>';
+      }
+
+      resultDiv.innerHTML = `
+        <p><strong>Name:</strong> ${transaction.cxName}</p>
+        <p><strong>Passport/Cedula:</strong> ${transaction.cxId}</p>
+        <p><strong>Phone:</strong> ${transaction.cxPhone}</p>
+        <p><strong>Activity Sector:</strong> ${transaction.activitySector}</p>
+        <p><strong>Loan Amount:</strong> ${transaction.amount} DOP</p>
+        <p><strong>Interest Rate:</strong> ${transaction.interestRate}%</p>
+        <p><strong>Total Owed:</strong> ${transaction.totalOwed} DOP</p>
+        <p><strong>Remaining:</strong> ${transaction.remaining} DOP</p>
+        <p><strong>Payment Type:</strong> ${transaction.paymentType}</p>
+        <p><strong>Number of Weeks:</strong> ${transaction.numberOfWeeks || '-'}</p>
+        <p><strong>Weekly Payment Amount:</strong> ${transaction.weeklyPaymentAmount ? transaction.weeklyPaymentAmount.toFixed(2) : '-'}</p>
+        <p><strong>End Date:</strong> ${transaction.endDate || '-'}</p>
+        ${paymentSchedule}
+      `;
+    }
+
+    function loadTransactionList() {
+      const tbody = document.getElementById('transactionTableBody');
+      tbody.innerHTML = '';
+      const today = new Date();
+
+      transactions.forEach((tx, index) => {
+        let nextDueDate = '';
+        let isPastDue = false;
+
+        if (tx.paymentType === 'weekly' && tx.numberOfWeeks) {
+          const startDate = new Date(tx.transactionDate);
+          const weeksPaid = Math.floor((tx.totalOwed - tx.remaining) / tx.weeklyPaymentAmount);
+          const nextWeek = weeksPaid + 1;
+          if (nextWeek <= tx.numberOfWeeks) {
+            startDate.setDate(startDate.getDate() + nextWeek * 7);
+            nextDueDate = startDate.toISOString().split('T')[0];
+            if (startDate < today && tx.remaining > 0) {
+              isPastDue = true;
+            }
+          }
+        } else if (tx.paymentType === 'single' && tx.endDate) {
+          nextDueDate = tx.endDate;
+          const endDate = new Date(tx.endDate);
+          if (endDate < today && tx.remaining > 0) {
+            isPastDue = true;
+          }
+        }
+
+        const row = document.createElement('tr');
+        if (isPastDue) {
+          row.style.backgroundColor = '#ffcccc';
+        }
+        row.innerHTML = `
+          <td>${tx.customerCode}</td>
+          <td>${tx.cxName}</td>
+          <td>${tx.amount}</td>
+          <td>${tx.interestRate}</td>
+          <td>${tx.totalOwed.toFixed(2)}</td>
+          <td>${tx.remaining.toFixed(2)}</td>
+          <td>${tx.paymentType}</td>
+          <td>${tx.numberOfWeeks || '-'}</td>
+          <td>${tx.weeklyPaymentAmount ? tx.weeklyPaymentAmount.toFixed(2) : '-'}</td>
+          <td>${tx.endDate || '-'}</td>
+          <td>${nextDueDate || '-'}</td>
+          <td>${tx.transactionDate}</td>
+          <td>${tx.fundSource}</td>
+          <td>
+            <button onclick="editTransaction('${tx.id}', ${index})">Edit</button>
+            <button onclick="deleteTransaction('${tx.id}', ${index})">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function loadPaymentRecords() {
+      const tbody = document.getElementById('paymentTableBody');
+      tbody.innerHTML = '';
+      payments.forEach(payment => {
+        const transaction = transactions.find(tx => tx.customerCode === payment.customerCode);
+        const customerName = transaction ? transaction.cxName : 'Unknown Customer';
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${payment.customerCode}</td>
+          <td>${customerName}</td>
+          <td>${payment.paymentAmount.toFixed(2)}</td>
+          <td>${payment.paymentDate}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    async function editTransaction(txId, index) {
+      const tx = transactions[index];
+      const newAmount = prompt('Enter new loan amount:', tx.amount);
+      const newInterestRate = prompt('Enter new interest rate:', tx.interestRate);
+      const newNumberOfWeeks = tx.paymentType === 'weekly' ? prompt('Enter new number of weeks:', tx.numberOfWeeks) : null;
+      const newEndDate = tx.paymentType === 'single' ? prompt('Enter new end date (YYYY-MM-DD):', tx.endDate) : null;
+
+      if (newAmount && newInterestRate) {
+        tx.amount = parseFloat(newAmount);
+        tx.interestRate = parseFloat(newInterestRate);
+        tx.totalOwed = tx.amount * (1 + tx.interestRate / 100);
+        tx.remaining = tx.remaining !== undefined ? tx.totalOwed - (tx.totalOwed - tx.remaining) : tx.totalOwed;
+
+        if (tx.paymentType === 'weekly' && newNumberOfWeeks) {
+          tx.numberOfWeeks = parseInt(newNumberOfWeeks);
+          tx.weeklyPaymentAmount = tx.totalOwed / tx.numberOfWeeks;
+        }
+        if (tx.paymentType === 'single' && newEndDate) {
+          tx.endDate = newEndDate;
+        }
+
+        transactions[index] = tx;
+        await saveDataToFile();
+        loadTransactionList();
+      }
+    }
+
+    async function deleteTransaction(txId, index) {
+      if (confirm('Are you sure you want to delete this transaction?')) {
+        transactions.splice(index, 1);
+        await saveDataToFile();
+        loadTransactionList();
+      }
+    }
+
+    function loadMonthlyChart() {
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const dailyTotals = Array(daysInMonth).fill(0);
+
+      transactions.forEach(tx => {
+        const txDate = new Date(tx.transactionDate);
+        if (txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
+          dailyTotals[txDate.getDate() - 1] += tx.amount;
+        }
+      });
+
+      const ctx = document.getElementById('monthlyChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: Array.from({ length: daysInMonth }, (_, i) => i + 1),
+          datasets: [{
+            label: 'Loan Amounts (DOP)',
+            data: dailyTotals,
+            backgroundColor: 'rgba(40, 167, 69, 0.6)',
+            borderColor: 'rgba(40, 167, 69, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    function loadFundsPage() {
+      let fequensTotal = 0;
+      let trevyTotal = 0;
+      let fequensInterestOnRemaining = 0;
+      let totalInterestEarnedOnRemaining = 0;
+      let fequensProfitOnRemaining = 0;
+      let totalProfitOnRemaining = 0;
+
+      transactions.forEach(tx => {
+        const remaining = tx.remaining || tx.totalOwed;
+        const interestEarnedOnRemaining = remaining * (tx.interestRate / 100);
+        totalInterestEarnedOnRemaining += interestEarnedOnRemaining;
+
+        if (tx.fundSource === 'Fequens') {
+          fequensTotal += tx.amount;
+          const interestToFequens = remaining * 0.07;
+          fequensInterestOnRemaining += interestToFequens;
+          const profitFromFequens = remaining * (tx.interestRate / 100 - 0.07);
+          fequensProfitOnRemaining += profitFromFequens;
+          totalProfitOnRemaining += profitFromFequens;
+        } else {
+          trevyTotal += tx.amount;
+          totalProfitOnRemaining += interestEarnedOnRemaining;
+        }
+      });
+
+      const fequensTotalOwed = fequensTotal + fequensInterestOnRemaining;
+
+      document.getElementById('fequensBorrowed').innerText = fequensTotal.toFixed(2);
+      document.getElementById('fequensInterest').innerText = fequensInterestOnRemaining.toFixed(2);
+      document.getElementById('fequensTotal').innerText = fequensTotalOwed.toFixed(2);
+      document.getElementById('trevyFunds').innerText = trevyTotal.toFixed(2);
+      document.getElementById('totalInterestEarned').innerText = totalInterestEarnedOnRemaining.toFixed(2);
+      document.getElementById('fequensProfit').innerText = fequensProfitOnRemaining.toFixed(2);
+      document.getElementById('totalProfit').innerText = totalProfitOnRemaining.toFixed(2);
+
+      const ctx = document.getElementById('fundsChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: ['Fequens Funds', 'Trevy Funds'],
+          datasets: [{
+            data: [fequensTotal, trevyTotal],
+            backgroundColor: ['rgba(255, 99, 132, 0.6)', 'rgba(54, 162, 235, 0.6)']
+          }]
+        }
+      });
+    }
+  </script>
 </body>
 </html>
